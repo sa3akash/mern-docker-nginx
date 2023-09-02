@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis/redis-stack:latest
+    container_name: redis-stack
+    ports:
+      - 6379:6379
+      - 8001:8001
+    volumes:
+      - redis-data:/data
+    restart: always
+    environment:
+      - REDIS_ARGS=--appendonly yes
+
+  db:
+    image: mongo
+    container_name: db
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    # container_name: backend
+    # ports:
+    #   - 5500:5500
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    deploy:
+      replicas: 2
+    depends_on:
+      - redis
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend
+    # ports:
+    # - "8080:8080"
+    volumes:
+      - ./frontend/src:/app/src
+      - /app/node_modules
+    depends_on:
+      - backend
+
+
+  nginx-mern:
+    image: nginx:latest
+    container_name: nginx-mern
+    ports: 
+      - "4000:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+    depends_on:
+      - backend
+      - frontend
+    restart: always
+
+
+volumes:
+  redis-data:
+  mongo-data:
